@@ -1,0 +1,8 @@
+<pimpmygps.core.Core>
+  <dataPath>.</dataPath>
+  <webServerPort>443</webServerPort>
+  <http2>false</http2>
+  <webServerIp>192.168.2.186</webServerIp>
+  <debug>false</debug>
+  <adminPassword>admin</adminPassword>
+</pimpmygps.core.Core>

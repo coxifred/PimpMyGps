@@ -1,0 +1,1956 @@
+<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
+<meta name="viewport"
+	content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<html>
+<head>
+
+
+
+
+<link rel="stylesheet" type="text/css" href="css/modal/basic.css" />
+<link rel="stylesheet" type="text/css" href="css/jquery/jquery-ui.css" />
+<link rel="stylesheet" type="text/css" href="css/lc_switch.css" />
+<link rel="stylesheet" type="text/css" href="css/semantic.css" />
+<link rel="stylesheet" type="text/css" href="css/osm/leaflet.css" />
+<link rel="stylesheet" type="text/css" href="css/calendar.css" />
+
+
+
+<script type="text/javascript" src="javascript/utils.js"></script>
+<script type="text/javascript" src="javascript/semantic.js"></script>
+<script type="text/javascript" src="javascript/lc_switch.js"></script>
+<script type="text/javascript" src="javascript/logged.js"></script>
+
+<link rel="stylesheet" type="text/css" href="css/skittles.css" />
+<link rel="stylesheet" type="text/css" href="css/animate.css" />
+
+<style>
+body {
+	padding: 0;
+	margin: 0;
+}
+
+html, body, #map {
+	height: 100%;
+	width: 100vw;
+}
+
+
+</style>
+
+<script>
+
+
+	$(document).ready(function() {
+		// The OpenStreetMap object
+		var map;
+		var currentVehicle;
+		var currentUser;
+		var currentFriend;
+		var currentPlugin;
+		
+		var markers = new Map();
+		var lines = new Map();
+		var vehicles = new Map();
+		var users = new Map();
+		var friends = new Map();
+		var plugins = new Map();
+		
+		// Filter for log refresh
+		var filterInclude="";
+		var filterExclude="";
+		var refresh=false;
+		
+		// Define Icon
+		var testIcon = L.divIcon({
+	        className: 'custom-div-icon',
+	        html: "<div style='background-color:#c30b82;' class='marker-pin'></div><i class='huge red map pin icon'></i>",
+	    });
+
+		// LoadDebug mode
+		getValueFromUrl("admin?action=debug",true,function (debugMode){
+			if ( debugMode == "true")
+				{
+					$('#checkDebug').checkbox("set unchecked");
+				}else
+					{
+					$('#checkDebug').checkbox("set checked");
+					}
+		});
+		$('#checkDebug').checkbox({
+		    onChecked: function() {
+		    	getValueFromUrl("admin?action=debug&debug=false",true);
+		      },
+		      onUnchecked: function() {
+		    	getValueFromUrl("admin?action=debug&debug=true",true);
+		      }
+		});
+		
+		$('#checkAutoRefresh').checkbox({
+		    onChecked: function() {
+		        refresh=false;
+		      },
+		      onUnchecked: function() {
+		    	refresh=true;
+		      }
+		});
+
+	
+		var currentLog="";
+		setInterval(function refresh(){
+			loadSystem();
+			filterInclude=$("#include").val();
+			filterExclude=$("#exclude").val();
+				if ( refresh ) 
+					{
+					loadLogs(filterInclude,filterExclude);
+					}
+			
+		}, 5000);
+		
+		
+		$('#rating')
+		  .rating({
+		    initialRating: 2,
+		    maxRating: 4
+		  })
+		;
+		
+		loadSystem();loadVehicles();loadUsers();loadFriends();loadAvailableFriends();loadSentRequests();loadReceiveRequests();loadPlugins();loadOrphans();
+		displayMap();
+		$('#sub').dropdown();
+		$('#gpsList').dropdown();
+	
+		$('#friendzList').dropdown();
+		$('#display').dropdown();
+		$('#vehicleListDrop').dropdown();
+		$('#userListDrop').dropdown();
+		$('#friendListDrop').dropdown();
+		$('#listFriendsDrop').dropdown();
+		$('#pluginListDrop').dropdown();
+		$('#orphansDrop').dropdown();
+		$('#apiDrop').dropdown();
+		$('#mapDrop').dropdown();
+		
+		$('#bars').click(function (e) {
+			$('#menu').show();
+		});
+		
+		$('#hideMenu').click(function (e) {
+			$('#menu').hide();
+		});
+		
+		$('#hidePlugin').click(function (e) {
+			$('#pluginList').hide();
+		});
+		
+		$('#hideUser').click(function (e) {
+			$('#pluginList').hide();
+		});
+
+		
+		function loadSystem()
+		{
+			getValueFromUrl("admin?action=getSystem",true,function(aJson){
+				try
+				{
+					system=JSON.parse(aJson);
+					$("#memory").html(system.useMemoryGb + "/" + system.totalMemoryGb + "Gb (Free:" + system.freeMemoryGb +"Gb)");
+					$("#processor").html(system.processorAvailable + " processors");
+					$("#java").html("Java " + system.javaVersion.version[0] + "." + system.javaVersion.version[1]+ "." + system.javaVersion.version[2]);
+				} catch (e)
+				{
+					console.log(e);
+				}
+			});
+		}
+		
+		function displayOrphans(aJson)
+		{
+			clearMap();
+			try {
+				orphans=JSON.parse(aJson);
+				for ( i=0;i<orphans.length;i++)
+					{
+						try
+						{
+						theOrph = new L.LatLng(orphans[i].latitude,orphans[i].longitude); 
+			    		map.setView(theOrph, 13);
+			    		var popupText = "IMEI=" + orphans[i].id + "@" + orphans[i].update;
+			        	var markerLocation = new L.LatLng(orphans[i].latitude,orphans[i].longitude);
+				    	var marker = new L.Marker(markerLocation,{icon: testIcon});
+			    		map.addLayer(marker);
+				    	marker.bindPopup(popupText);
+				    	markers.set("Imei: " + orphans[i].id,marker);
+
+						}catch (e)
+						{
+							console.log(e);
+						}
+					}
+			} catch (e)
+			{
+				console.log(e);						
+			}
+		}
+		
+		$('#listOrphans').click(function (e) {
+			getValueFromUrl("admin?action=getOrphans",true,function(aJson){
+				displayOrphans(aJson);
+				
+			});
+		});
+		
+		$('#clearOrphans').click(function (e) {
+			getValueFromUrl("admin?action=deleteOrphans",true,function(aJson){
+				loadOrphans();	
+				clearMap();
+			});
+
+		});
+		
+		
+		
+		
+		$('#closeLogs').click(function (e) {
+			$('#logsConsole').hide();
+		});
+		
+		$('#deleteFriend').click(function (e) {
+			
+			$('#deleteObject').html(currentFriend);
+			$('#confirm')
+			  .modal({
+				onApprove : function() {
+					getValueFromUrl("admin?action=deleteFriend&name=" + currentFriend,true,loadFriends);
+				    }
+			}).modal('show');
+			
+
+		});
+		
+		$('#recycleOrphans').click(function (e) {
+			getValueFromUrl("admin?action=recycleOrphans",true,function(aJson){
+				loadOrphans();	
+				clearMap();
+				loadVehicles();
+			});
+
+		});
+		
+		$('#cancelSettings').click(function (e) {
+			$('#mySettingsModal').hide();
+		});
+		
+		$('#validSettings').click(function (e) {
+			$('#mySettingsModal').hide();
+		});
+		
+		$('#listVeh').click(function (e) {
+			$("#vehicleList").show();
+			$("#userList").hide();
+			$("#friendList").hide();
+			$("#pluginList").hide();
+		});
+		
+		$('#listUsers').click(function (e) {
+			$("#userList").show();
+			$("#vehicleList").hide();
+			$("#friendList").hide();
+			$("#pluginList").hide();
+		});
+		
+		$('#listFriends').click(function (e) {
+			$("#friendList").show();
+			$("#pluginList").hide();
+			$("#userList").hide();
+			$("#vehicleList").hide();
+		});
+		
+		$('#listPlugins').click(function (e) {
+			$("#pluginList").show();
+			$("#friendList").hide();
+			$("#userList").hide();
+			$("#vehicleList").hide();
+		});
+
+		$('#hideVeh').click(function (e) {
+			$('#vehicleList').hide();
+		});
+		
+		$('#hideFriend').click(function (e) {
+			$('#friendList').hide();
+		});
+		
+		$('#userIcon').click(function (e) {
+			$('#userList').hide();
+		});
+		
+		$('#helpimei').click(function (e) {
+			$('#helpid').show();
+		});
+		
+		$('#mySettings').click(function (e) {
+			$('#mySettingsModal').show();
+		});
+		
+		
+		function clearMap()
+		{
+			for (var marker of markers.values()) {
+				 marker.remove;
+				}
+			for (var line of lines.values()) {
+				 line.remove;
+				}
+			map.remove();
+			displayMap();
+		}
+		
+		$('#clearMap').click(function (e) {
+			clearMap();
+		});
+		
+		
+		$('#closehelp').click(function (e) {
+			$('#helpid').hide();
+		});
+		
+		$('#friendIcon').click(function (e) {
+			$('#friendList').hide();
+		});
+		
+		$('#pluginIcon').click(function (e) {
+			$('#pluginList').hide();
+		});
+		
+		$('#apiProfile').click(function (e) {
+			window.open("admin?action=apiProfile", "ApiProfile");
+		});
+		
+		$('#apiCore').click(function (e) {
+			window.open("admin?action=apiCore", "ApiCore");
+		});
+		
+		$('#getLogs').click(function (e) {
+			currentLog="coreLog";
+			$('#checkDebug').checkbox("set enabled");
+			loadLogs(filterInclude,filterExclude);
+			$('#logsConsole').show();
+		});
+		
+		$('#closeinfoveh').click(function (e) {
+
+			$('#optionVeh').hide();
+		});
+		
+		$('#addVeh').click(function (e) {
+			//Clear all fields
+			$("#vehNameShape").removeClass("disabled");
+			$("#vehName").val("");
+			$("#buttonDeleteGps").hide();
+			$("#createVeh").modal('show');
+			
+		});
+		
+		function convertDate(date) {
+			try {
+			   // console.log("convertDate " + Date.parse(date).toString("dd MMMM yyyy HH:mm:ss") );
+			   aDate = Date.parse(date);
+			   
+				 console.log("convertDate " + Date.parse(date).toString() );
+			}catch (e)
+			{
+				console.log("convertDate " + e);
+			}
+		    
+		    return date;
+		}
+		
+		function loadCalendar()
+		{
+			var dateFormat = "yy-mm-dd";
+		      from = $( "#from" )
+		        .datepicker({
+		          defaultDate: "+1w",
+		          changeMonth: true,
+		          numberOfMonths: 1
+		        })
+		        .on( "change", function() {
+		        	$( "#from" ).val(getDate( this ));
+		          //to.datepicker( "option", "minDate", getDate( this ) );
+		        }),
+		      to = $( "#to" ).datepicker({
+		        defaultDate: "+1w",
+		        changeMonth: true,
+		        numberOfMonths: 1
+		      })
+		      .on( "change", function() {
+		    	  $( "#to" ).val(getDate( this ));
+		        //from.datepicker( "option", "maxDate", getDate( this ) );
+		      });
+		}
+		
+		function getDate( element ) {
+			  //alert(element.value);
+			  try{
+				  var tab=element.value.split("/");
+				  var result=tab[2] + "" + tab[0] + "" + tab[1];
+				  return result;
+			  }catch (e)
+			  {
+				  alert(e);
+			  }
+			  return "ERR";
+		    }
+		
+		$('#range').click(function (e) {
+			
+			loadCalendar();
+			$("#chooseDate")
+			  .modal({
+					onApprove : function() {
+						
+						jsonVeh=vehicles.get(currentVehicle);
+						var marker=markers.get(currentVehicle);
+						try{
+							marker.remove;	
+						}catch (e)
+						{
+						}
+						getValueFromUrl("admin?action=getPath&vehicleName="+currentVehicle+"&dateStart="+$("#from").val()+"&dateEnd=" + $("#to").val,true,function(aJson){
+							    points=JSON.parse(aJson);
+							    console.log(points);
+							    var line=lines.get(currentVehicle);
+								try{
+									line.remove;	
+								}catch (e)
+								{
+								}
+						    	var liste=new Array();
+						    	for (i=0;i<points.length;i++)
+						    		{
+						    		var point=new Array();
+						    		point.push(points[i].latitude);
+						    		point.push(points[i].longitude);
+						    		liste.push(point);
+						    		}
+						    	var polyline = L.polyline(liste, {color: 'red'}).addTo(map);
+						    	lines.set(currentVehicle,polyline);
+						    	// zoom the map to the polyline
+						    	map.fitBounds(polyline.getBounds());
+							    
+							});
+						
+						
+						
+					    }
+				}).modal('show');
+		});
+		
+		$('.lastPosition').click(function (e) {
+			
+			jsonVeh=vehicles.get(currentVehicle);
+			if ( typeof jsonVeh == "undefined" )
+				{
+				$("#selectVehHead").html("Error:");
+				$("#selectVeh").show();
+				}else
+					{
+				displayVehOnMap(jsonVeh);
+					}
+		});
+		
+		$('#today').click(function (e) {
+			jsonVeh=vehicles.get(currentVehicle);
+			var marker=markers.get(currentVehicle);
+			try{
+				marker.remove;	
+			}catch (e)
+			{
+			}
+			getValueFromUrl("admin?action=getPath&vehicleName="+currentVehicle+"&dateStart=today&dateEnd=today",true,function(aJson){
+				    points=JSON.parse(aJson);
+				    console.log(points);
+				    var line=lines.get(currentVehicle);
+					try{
+						line.remove;	
+					}catch (e)
+					{
+					}
+			    	var liste=new Array();
+			    	for (i=0;i<points.length;i++)
+			    		{
+			    		var point=new Array();
+			    		point.push(points[i].latitude);
+			    		point.push(points[i].longitude);
+			    		liste.push(point);
+			    		}
+			    	var polyline = L.polyline(liste, {color: 'red'}).addTo(map);
+			    	lines.set(currentVehicle,polyline);
+			    	// zoom the map to the polyline
+			    	map.fitBounds(polyline.getBounds());
+				    
+				});
+		});
+		
+		$('#addPlugin').click(function (e) {
+			$("#createPlugin").modal('show');
+		});
+		
+		$('#logout').click(function (e) {
+			console.log("logout");
+			getValueFromUrl("admin?action=logout",true,function(){
+			setUrl("/index.html");
+			});
+		});
+		
+		$('#addUser').click(function (e) {
+			$("#userName").val(""); 
+			$("#userNameShape").removeClass("disabled");
+			$("#userPasswd").val("");
+			$("#buttonDeleteUser").hide();
+			$("#createUser").modal('show');
+		});
+		
+		$('#buttonAddVeh').click(function (e) {
+			// Check if name is already take by user
+			checkIfVehicleIsPresent($('#vehName').val());
+		});
+		
+		$('#buttonAddUser').click(function (e) {
+			// Check if name is already take by user
+			checkIfUserIsPresent($('#userName').val());
+		});
+		
+		$('#buttonDeleteUser').click(function (e) {
+			// Check if name is already take by user
+			checkIfUserIsPresent($('#userName').val());
+		});
+		
+		$("#mylog").click(function (e) {
+			currentLog="myLog";
+			$('#checkDebug').checkbox("set disabled");
+			$("#logContent").html("");
+			$("#logsConsole").show();
+		});
+		
+		$('#addFriend').click(function (e) {
+			$("#createFriend").modal('show');
+		});
+		
+		$('#noEntryClose').click(function (e) {
+			$("#noEntry").hide();
+		});
+		
+		$('#selectVehClose').click(function (e) {
+			$("#selectVeh").hide();
+		});
+		
+		$('#selectUserClose').click(function (e) {
+			$("#selectUser").hide();
+		});
+		
+		$('#maxspeed').click(function (e) {
+			var aVeh=vehicles.get(currentVehicle);
+			try
+			  {
+				theVeh = new L.LatLng(aVeh.gps.maxSpeed.latitude,aVeh.gps.maxSpeed.longitude); 
+	    		map.setView(theVeh, 13);
+	    		var popupText = aVeh.name + "@" + aVeh.gps.update + ", Azimut: " + aVeh.gps.maxSpeed.azimut + ", ! Record Speed: " + aVeh.gps.maxSpeed.speed + " km/h";
+	        	var markerLocation = new L.LatLng(aVeh.gps.maxSpeed.latitude,aVeh.gps.maxSpeed.longitude);
+		    	var marker = new L.Marker(markerLocation);
+	    		map.addLayer(marker);
+		    	marker.bindPopup(popupText);
+		    	markers.set(aVeh.name,marker);
+		    	console.log("Max speed is displayed");
+			  }catch (e)
+			  {
+				  alert(e);
+			  }
+		});
+		
+		$('#buttonAddFriend').click(function (e) {
+			getValueFromUrl("admin?action=sendRequest&targetName=" + $('#friendzList').dropdown('get value'),true,loadSentRequests);
+		});
+		
+		$('#friendSentRequests').click(function (e) {
+			getValueFromUrl("admin?action=getMe",true,function(aJson){
+				try {
+						me=JSON.parse(aJson);
+						console.log(me);
+						loadSentRequestsList();
+						$("#listSentRequests").modal('show');
+					} catch (e)
+					{
+						
+					}
+			});	
+		});
+		
+		$('#friendRequests').click(function (e) {
+				getValueFromUrl("admin?action=getMe",true,function(aJson){
+					try {
+							me=JSON.parse(aJson);
+							console.log(me);
+							loadRequestsList();
+							$("#listRequests").modal('show');
+						} catch (e)
+						{
+							
+						}
+				});	
+				
+				
+			});
+		
+		function loadSentRequests()
+		{
+			getValueFromUrl("admin?action=getMe",true,function(aJson){
+				try {
+						me=JSON.parse(aJson);
+						$("#friendSentRequests").html("Sent requests<div style=position:fixed;top:83px;left:110px class=\"ui tiny teal left pointing label\">" + me.sentRequests.length + "</div>");
+					} catch (e)
+					{
+						
+					}
+			});
+		}
+		
+		function loadOrphans()
+		{
+			getValueFromUrl("admin?action=getOrphans",true,function(aJson){
+				try {
+						orphans=JSON.parse(aJson);
+						$("#orphansCountMenu").html("Orphans <div style=position:fixed;top:262px;right:18px class=\"ui tiny red left pointing label\">" + orphans.length + "</div>");
+					} catch (e)
+					{
+						
+					}
+			});
+		}
+
+				
+		
+		function loadLogs(filterInclude,filterExclude)
+		{
+			if ( currentLog == "myLog" )
+				{
+				extraVeh="&vehicle=" + currentVehicle;
+				}else
+					{
+					extraVeh="";
+					}
+				getValueFromUrl("admin?action=getLogs&include=" + filterInclude + "&exclude=" + filterExclude + extraVeh,true,function(aJson){
+				try {
+						log=JSON.parse(aJson);
+						$("#logContent").html("");
+						html="";
+						for ( i=0;i<log.length;i++)
+							{
+							   	html+="<div style=display:inline;position:relative;left:5px;color:#36fc00;font-size:8px>" +log[i].s_date + "</div>";
+								html+="<div style=display:inline;position:relative;left:10px;color:#09ddf4;font-size:8px>[Thread-" +log[i].thread + "]</div>";
+								html+="<div style=display:inline;position:relative;left:15px;color:#ff9000;font-size:8px>" +log[i].severity + "</div>";
+								html+="<div style=display:inline;position:relative;left:20px;color:#fff000;font-size:8px>" +log[i].from + "</div>";
+								html+="<div style=display:inline;position:relative;left:25px;color:#ffffff;font-size:8px>" +log[i].message + "</div>";
+								html+="<br>";
+							    	
+							}
+						$("#logContent").html(html);
+						$("#logContent").scrollTop($("#logContent")[0].scrollHeight);
+					} catch (e)
+					{
+						console.log(e);
+					}
+			});
+		}
+		
+		function loadSentRequestsList()
+		{
+			getValueFromUrl("admin?action=getMe",true,function(aJson){
+				try {
+						me=JSON.parse(aJson);
+						console.log(me);
+						
+						html="";
+						
+						for (i=0;i<me.sentRequests.length;i++)
+							{
+								html += "<div class=\"item\">";
+									html += "<i class=\"enveloppe icon\"></i>";
+									html += "<div class=\"content\">";
+										html += " <div  class=\"header\">" + me.sentRequests[i] + "&nbsp;<button id=\"" + me.sentRequests[i] + "\" class=\"mini ui red button deleteSent\">Delete</button></div>";
+									html += "</div>";
+								html += "</div>";
+							}
+						console.log("html: " + html);						
+						$("#sentRequestsList").html(html);
+					} catch (e)
+					{
+						console.log(e);
+					}
+			});
+		}
+		
+		function loadRequestsList()
+		{
+			getValueFromUrl("admin?action=getMe",true,function(aJson){
+				try {
+						me=JSON.parse(aJson);
+						console.log(me);
+						
+						html="";
+						
+						for (i=0;i<me.requests.length;i++)
+							{
+								html += "<div class=\"item\">";
+									html += "<i class=\"enveloppe icon\"></i>";
+									html += "<div class=\"content\">";
+										html += " <div  class=\"header\">" + me.requests[i] + "&nbsp;<button id=\"" + me.requests[i] + "\" class=\"mini ui green button acceptReceive\">Accept Friend Request</button></div>";
+									html += "</div>";
+								html += "</div>";
+							}
+
+						$("#requestsList").html(html);
+					} catch (e)
+					{
+						console.log(e);
+					}
+			});
+		}
+		
+		
+		
+		function loadReceiveRequests()
+		{
+			console.log("loadReceiveRequests");
+			getValueFromUrl("admin?action=getMe",true,function(aJson){
+				try {
+						me=JSON.parse(aJson);
+						$("#friendRequests").html("Requests<div style=position:fixed;top:46px;left:110px class=\"ui tiny green left pointing label\">" + me.requests.length + "</div>");
+					} catch (e)
+					{
+						
+					}
+			});
+		}
+		
+		
+		
+		function displayMap()
+		{
+			map = new L.Map('map');                       
+			L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+	        attribution: '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+	            maxZoom: 18
+	         }).addTo(map);
+	        map.attributionControl.setPrefix(''); // Don't show the 'Powered by Leaflet' text.
+	        
+
+	       
+		}
+		
+		function checkIfVehicleIsPresent(vehicleName)
+		{
+			getValueFromUrl("admin?action=checkIfVehicleIsPresent&vehicleName=" + vehicleName,true,function(exist){
+				console.log(exist);
+				if ( exist == "true" )
+					{
+					console.log("present  true");
+					
+					}else
+						{
+						console.log("Create");
+						getValueFromUrl("admin?action=addVehicle&vehicleName=" + $('#vehName').val()+"&gpsName=" + $('#gpsList').dropdown('get value')+"&gpsId=" + $('#gpsId').val(),true,loadVehicles);
+						}
+			});
+		}
+		
+		function checkIfUserIsPresent(vehicleName)
+		{
+			getValueFromUrl("admin?action=checkIfUserIsPresent&userName=" + userName,true,function(exist){
+				console.log(exist);
+				if ( exist == "true" )
+					{
+					console.log("present  true");
+					
+					}else
+						{
+						console.log("Create");
+						getValueFromUrl("admin?action=addUser&userName=" + $('#userName').val()+"&userPasswd=" + $('#userPasswd').val()+"&force=false",true,loadUsers);
+						}
+			});
+		}
+		function loadAvailableFriends()
+		{
+			getValueFromUrl("admin?action=listUsers",true,fillAvailableFriends);
+		}
+		
+		function fillAvailableFriends(availableFriends)
+		{
+			var html="";
+			try{
+			jsonFriends=JSON.parse(availableFriends);
+			for ( i=0;i<jsonFriends.length;i++)
+	 		{
+				//console.log("i=" + i);
+				html+="<div class=\"item\" data-value=\"" +jsonFriends[i] + "\">" + jsonFriends[i]  + "</div>";
+		 	}
+			
+			} catch (e)
+			{}
+			$("#friendsList").html(html);
+		}
+		$("body").delegate(".unfriend", "click", function(){
+			id=$(this).attr("id");
+			$('#deleteObject').html(id);
+			$('#confirm')
+			  .modal({
+				onApprove : function() {
+					
+					getValueFromUrl("admin?action=removeFriend&targetName=" + id,true,loadUsers);
+				    }
+			}).modal('show');
+		});
+		
+	
+		
+		$('#clearOrphans').click(function (e) {
+			$('#deleteObject').html("All Orphans");
+			$('#confirm')
+			  .modal({
+				onApprove : function() {
+					
+					if ( markers.has(currentVehicle))
+					{
+					var marker=markers.get(currentVehicle);
+					marker.remove();
+					}
+					getValueFromUrl("admin?action=deleteGpsEntries&vehicleName=" + currentVehicle,true,function(){
+						$("#optionVeh").hide();
+						
+						loadVehicles();
+						
+					});
+				    }
+			}).modal('show');
+		});
+		
+		$('#inject').click(function (e) {
+			
+			$('#injectModal')
+			  .modal({
+				onApprove : function() {
+					
+					var lines = $("#messages").val().split('\n');
+//  					for(var i = 0;i < lines.length;i++){
+//  						console.log(currentVehicle + " message " + lines[i]);
+//  					}
+					getValueFromUrl("admin?action=inject&gpsName=" + currentVehicle + "&clean=" + document.querySelector('#checkPrune').checked + "&keepDate=" + document.querySelector('#keepDate').checked+"&data=" + encodeURIComponent($("#messages").val()),true,function () {
+
+						//loadVehicles();
+						loadOrphans();
+						$("#optionVeh").hide();
+					});
+					
+				    }
+			}).modal('show');
+		});
+		
+		$("body").delegate(".deleteSent", "click", function(){
+			id=$(this).attr("id");
+			$('#deleteObject').html(id);
+			$('#confirm')
+			  .modal({
+				onApprove : function() {
+					getValueFromUrl("admin?action=removeSentRequest&targetName=" + id,true,loadSentRequests);
+				    }
+			}).modal('show');
+		});
+		
+		
+		$("body").delegate(".acceptReceive", "click", function(){
+			id=$(this).attr("id");
+			getValueFromUrl("admin?action=acceptRequest&targetName=" + id,true,loadReceiveRequests);
+			$(this).css("display","none");
+		});
+		
+		
+		function loadUsers()
+		{
+			console.log("Load users");
+			getValueFromUrl("admin?action=getUsers",true,fillTableUsers);
+		}
+		
+		function loadVehicles()
+		{
+			console.log("Load vehz");
+			getValueFromUrl("admin?action=getVehicles",true,fillTableGps);
+		}
+		
+		function displayMadeInFc()
+		{
+			belfort = new L.LatLng(47.6379599,6.8628942); 
+    		map.setView(belfort, 13);
+			 var markerLocation = new L.LatLng(47.6379599, 6.8628942);
+	            var marker = new L.Marker(markerLocation);
+	            var popup = L.popup()
+	            .setLatLng(markerLocation)
+	            .setContent('<p>Made in Franche Comte !</p><a target=new href=https://github.com/coxifred/PimpMyGps>https://github.com/coxifred/PimpMyGps</a>')
+	            .openOn(map);
+	  
+			
+		}
+		
+		function fillTableGps(vehz)
+		{
+			console.log("Fill gps table ");
+			
+			$("#selectedVeh").html("");
+			$("#optionVeh").hide();
+			var html="";
+			try{
+			jsonVehs=JSON.parse(vehz);
+			if ( jsonVehs.length == 0 )
+				{
+				displayMadeInFc();
+				}
+			
+			if ( jsonVehs.length == 1 )
+			{
+				// Auto select
+				currentVehicle=jsonVehs[0].name;
+			}
+		
+			
+			$("#vehicleCount").html("Vehicles<div style=position:relative;top:-1px; class=\"ui mini green left pointing label\">" +jsonVehs.length+ "</div>");
+			$("#vehicleCountMenu").html("My Vehicles<div style=position:relative;top:-1px;right:-32px class=\"ui tiny green left pointing label\">" +jsonVehs.length+ "</div>");
+			
+			var vehCenterMap;
+			for ( i=0;i<jsonVehs.length;i++)
+	 		{
+
+// 				html+="<tr>";
+// 					html+="<td>" + jsonVehs[i].name + "</td>";
+// 					html+="<td><div id=\"" + jsonVehs[i].name + "\" class=\"ui vertical animated button infoAble\" tabindex=\"0\"><div class=\"hidden content\">Info</div><div class=\"visible content\"><i class=\"small info icon\"></i></div></div></td>";
+// 					html+="<td><div id=\"" + jsonVehs[i].name + "\" class=\"ui vertical button mappable\" tabindex=\"0\">Show/Hide</div></td>";
+// 					html+="<td><div style=position:relative;left:-10px id=\"" + jsonVehs[i].name + "\" class=\"ui vertical animated button editableGps\" tabindex=\"0\"><div class=\"hidden content\">Edit</div><div class=\"visible content\"><i class=\"small pencil alternate icon\"></i></div></div></td>";
+// 				html+="</tr>";
+				
+				html+="<a id=\"" + jsonVehs[i].name + "\" class=\"infoAble item\">" + jsonVehs[i].name + "</a>";
+				
+				vehicles.set(jsonVehs[i].name,jsonVehs[i]);
+				// We add coordinates into the map
+				// On centrera la map sur le premier vehicule
+				try{
+				if ( i == 0)
+					{
+ 					 vehCenterMap=jsonVehs[i];
+					}
+ 				   
+					displayVehOnMap(jsonVehs[i],vehCenterMap);
+		            
+				}catch (e)
+				{
+					console.log(e);
+				}
+		        
+				
+		 	}
+			
+			} catch (e)
+			{}
+// 			html+="<td style=height:90px><center>&nbsp</td>";
+			$("#vehContent2").html(html);
+			loadAvailableFriends();
+		}
+		
+		function fillTableUsers(usersData)
+		{
+			console.log("Fill users table");
+			$("#selectedUser").html("");
+			var html="";
+			try{
+			jsonUsers=JSON.parse(usersData);
+			
+			if ( jsonUsers.length == 1 )
+			{
+				// Auto select
+				currentUser=jsonUsers[0].name;
+				$("#selectedUser").html("&nbsp;&nbsp;&nbsp;" + currentUser);
+				$("#userSelected").show();
+			}
+			
+			
+			
+			$("#userCount").html("Users<div style=position:relative;top:-1px; class=\"ui mini green left pointing label\">" +jsonUsers.length+ "</div>");
+			$("#userCountMenu").html("Users<div style=position:relative;top:-1px;right:-71px class=\"ui tiny green left pointing label\">" +jsonUsers.length+ "</div>");
+			for ( i=0;i<jsonUsers.length;i++)
+	 		{
+				
+				html+="<a id=\"" + jsonUsers[i].name + "\" class=\"editableUsers item\">" + jsonUsers[i].name + "</a>";
+				users.set(jsonUsers[i].name,jsonUsers[i]);
+				
+		 	}
+			} catch (e)
+			{
+				console.log(e);
+			}
+			html+="<td style=height:90px><center>&nbsp</td>";
+			$("#userContent2").html(html);
+		}
+		
+		function fillTableFriends(friendz)
+		{
+			console.log("Fill friends table");
+			$("#selectedFriend").html("");
+			var html="";
+			try{
+			jsonUsers=JSON.parse(friendz);
+
+			$("#friendCount").html("Friends<div style=position:relative;top:-1px; class=\"ui mini green left pointing label\">" +jsonUsers.length+ "</div>");
+			$("#friendCountMenu").html("Friends<div style=position:relative;top:-1px;right:-60px class=\"ui tiny green left pointing label\">" +jsonUsers.length+ "</div>");
+			if ( jsonUsers.length == 1 )
+				{
+				currentFriend=jsonUsers[0];
+				$("#selectedFriend").html("&nbsp;&nbsp;&nbsp;" + currentFriend);
+				$("#friendSelected").show();
+				
+				}
+			for ( i=0;i<jsonUsers.length;i++)
+	 		{
+				html+="<a id=\"" + jsonUsers[i].name + "\" class=\"editableFriend item\">" + jsonUsers[i] + "</a>";
+				friends.set(jsonUsers[i],jsonUsers[i]);
+		 	}
+			
+			} catch (e)
+			{
+				console.log(e);
+				
+			}
+			$("#friendContent2").html(html);
+		}
+		
+		function fillTablePlugins(pluginz)
+		{
+			console.log("Fill availableplugins table ");
+			console.log(pluginz);
+			$("#selectedPlugin").html("");
+			var html="";
+			try{
+			jsonPlugins=JSON.parse(pluginz);
+			console.log(pluginz);
+			$("#pluginCount").html("Plugins<div style=position:relative;top:-1px; class=\"ui mini green left pointing label\">" +jsonPlugins.length+ "</div>");
+			$("#pluginCountMenu").html("Plugins<div style=position:relative;top:0px;right:-62px class=\"ui tiny green left pointing label\">" +jsonPlugins.length+ "</div>");
+			if ( jsonPlugins.length == 1 )
+				{
+				currentPlugin=jsonPlugins[0];
+
+				$("#pluginSelected").show();
+				}
+			plugin="";
+			for ( i=0;i<jsonPlugins.length;i++)
+	 		{
+				html+="<a id=\"" + jsonPlugins[i].name + "\" class=\"editablePlugin item\">" + jsonPlugins[i].name + "</a>";
+				//plugin+="<div class=item data-value=\"" + jsonPlugins[i].name  + "\"><i class=link data-content=\"" + jsonPlugins[i].description + "\" data-variation=\"wide\">" + jsonPlugins[i].name +"</div>";
+				plugin+="<option value=\"" + jsonPlugins[i].name + "\">" + jsonPlugins[i].name +"</option>"
+				plugins.set(jsonPlugins[i].name,jsonPlugins[i]);
+		 	}
+			$('#pluginListAvailable').html(plugin);
+			$('#pluginListAvailable').dropdown({
+				 action: function(text, value) {
+				     alert("myAction");
+				     
+				    }
+				
+				
+			});
+			} catch (e)
+			{
+				
+				console.log(e);
+			}
+			$("#pluginList").dropdown();
+			$("#pluginContent2").html(html);
+		}
+		
+		function loadFriends()
+		{
+			console.log("Load friends");
+			getValueFromUrl("admin?action=getFriends",true,fillTableFriends);
+		}
+		
+		function loadPlugins()
+		{
+			console.log("Load availablePlugins Here");
+			getValueFromUrl("admin?action=getAvailablePlugins",true,fillTablePlugins);
+		}
+		
+		$('#buttonDeleteGps').click(function (e) {
+			$('#deleteObject').html($('#vehName').val());
+			$('#confirm')
+			  .modal({
+				onApprove : function() {
+					getValueFromUrl("admin?action=removeVehicle&vehicleName=" + $('#vehName').val(),true,loadVehicles);
+					vehicles.delete(currentVehicle);
+					currentVehicle=undefined;
+				    }
+			}).modal('show');
+		});
+		
+		$('#buttonDeleteUser').click(function (e) {
+			$('#deleteObject').html(currentUser);
+			$('#confirm')
+			  .modal({
+				onApprove : function() {
+					getValueFromUrl("admin?action=removeUser&userName=" + currentUser,true,loadUsers);
+					currentUser=undefined;
+				    }
+			}).modal('show');
+		});
+		
+		
+		$("body").delegate(".mappable", "click", function(){
+
+			id=$(this).attr("id");
+			
+			getValueFromUrl("admin?action=getVehicle&vehicleName="+id,true,function(aVeh){
+				try{
+					jsonVeh=vehicles.get(id);
+					console.log(jsonVeh);
+					
+					// Si le vehicule est deja sur la map, on l'efface
+					if ( markers.has(jsonVeh.name))
+						{
+							var marker = markers.get(jsonVeh.name);
+							marker.remove();
+							markers.delete(jsonVeh.name);
+						} else
+						{
+							displayVehOnMap(jsonVeh);
+						}
+				}catch(e)
+				{
+					
+				}
+			});
+		});
+		
+		function displayVehOnMap(jsonVeh,vehCenterMap)
+		{
+			if ( typeof jsonVeh.gps.latitude == "undefined" || ( jsonVeh.gps.latitude == 0 && jsonVeh.gps.longitude == 0))
+				{
+				$("#noEntryHead").html(jsonVeh.name + ", can't display this vehicle because:");
+				$("#noEntry").show();
+				}else
+					{
+						// Center Map on vehicule in 2nd parameter
+						if ( typeof vehCenterMap == "undefined" )
+							{
+							vehCenterMap=jsonVeh;
+							}
+								
+						if ( typeof vehCenterMap.gps.latitude != "undefined" && vehCenterMap.gps.latitude != 0 && vehCenterMap.gps.longitude != 0 )
+							{
+								theVeh = new L.LatLng(vehCenterMap.gps.latitude,vehCenterMap.gps.longitude); 
+								map.setView(theVeh, 13);
+							}
+						var popupText = jsonVeh.name + "@" +jsonVeh.gps.update +", Azimut: " + jsonVeh.gps.azimut + ", Speed: " + jsonVeh.gps.speed + " km/h";
+			        	var markerLocation = new L.LatLng(jsonVeh.gps.latitude, jsonVeh.gps.longitude);
+				    	var marker = new L.Marker(markerLocation);
+			    		map.addLayer(marker);
+				    	marker.bindPopup(popupText);
+				    	markers.set(jsonVeh.name,marker);
+					}
+		}
+	
+		
+		$("body").delegate(".infoAble", "click", function(){
+
+			id=$(this).attr("id");
+			currentVehicle=id;
+			$("#selectedVeh").html("&nbsp;&nbsp;&nbsp;" + currentVehicle);
+			showVehicleOptions();
+			
+		});
+		
+	
+		
+		 
+		
+		
+		
+		function showVehicleOptions()
+		{
+			var vehicle=vehicles.get(currentVehicle);
+			$("#maxspeed").html("?");
+			$("#gpsEntry").html("?");
+			$("#azimut").html("?");
+			$("#lastUpdate").html("?");
+			$("#mylog").html("?");
+			try {
+			      	$("#maxspeed").html(vehicle.gps.maxSpeed.speed + "km/h");
+				}
+				catch (e)
+				{
+					console.log("maxSpeedError " + e);
+				}
+			try {
+					$("#mylog").html(vehicle.gps.logs.length);
+				}
+				catch (e)
+				{
+					console.log("myLogError " + e);
+				}	
+			try {
+				$("#azimut").html(vehicle.gps.azimut);
+				}
+				catch (e)
+				{
+				console.log("azimutError " + e);
+				}
+			try {	
+				$("#lastUpdate").html(convertDate(vehicle.gps.update));
+				}
+				catch (e)
+				{
+				console.log("lastUpdateError " + e);
+				}
+				try {
+								if ( vehicle.gps.longitude == 0 && vehicle.gps.latitude == 0)
+									{
+											$("#lastUpdate").html("?");
+											$("#gpsEntry").html("0");
+									}else
+									{
+											$("#gpsEntry").html(vehicle.gps.historic.length);
+									}
+				}
+				catch (e)
+				{
+					console.log("gpsEntryError " + e);
+				}
+				try {							
+					$("#mylog").html(vehicle.gps.logs.length);
+				}
+				catch (e)
+				{
+					console.log("mylogError " + e);
+				}
+			
+			$("#optionVeh").show();
+				
+
+		}
+		
+		$("body").delegate(".editableUsers", "click", function(){
+
+			id=$(this).attr("id");
+			currentUser=id;
+			$("#selectedUser").html("&nbsp;&nbsp;&nbsp;" + currentUser);
+			$("#userSelected").show();
+			
+			
+		})
+					
+		$("#editableGps").click(function (e) {
+			jsonVeh=vehicles.get(currentVehicle);
+			if ( typeof jsonVeh == "undefined" )
+				{
+				$("#selectVehHead").html("Error:");
+				$("#selectVeh").show();
+				}else
+					{
+				
+			getValueFromUrl("admin?action=getVehicle&vehicleName="+currentVehicle,true,function(aVeh){
+				try{
+					jsonVeh=JSON.parse(aVeh);
+					console.log(jsonVeh);
+					$("#vehName").val(jsonVeh.name);
+					$("#vehNameShape").addClass("disabled");
+					$("#buttonDeleteGps").show();
+					$('#gpsList').dropdown('set selected',jsonVeh.gps.protocol)
+					$("#gpsId").val(jsonVeh.gps.id);
+					$("#createVeh").modal({
+						onApprove : function() {
+						getValueFromUrl("admin?action=addVehicle&vehicleName=" + $('#vehName').val()+"&gpsName=" + $('#gpsList').dropdown('get value')+"&gpsId=" + $('#gpsId').val(),true,loadVehicles);	
+						}
+					}).modal('show');
+					
+				}catch(e)
+				{
+					
+				}
+				
+			});
+					}
+		});
+		
+		$("#editableUser").click(function (e) {
+
+			jsonUser=users.get(currentUser);
+			if ( typeof jsonUser == "undefined" )
+				{
+				$("#selectUserHead").html("Error:");
+				$("#selectUser").show();
+				}else
+					{
+						getValueFromUrl("admin?action=getUser&userName="+currentUser,true,function(aUser){
+							try{
+								jsonUser=JSON.parse(aUser);
+								console.log(jsonUser);
+								$("#userName").val(jsonUser.name); 
+								$("#userNameShape").addClass("disabled");
+								$("#buttonDeleteUser").show();
+								$("#userPasswd").val(jsonUser.password);
+								$("#createUser").modal({
+									onApprove : function() {
+									getValueFromUrl("admin?action=addUser&userName=" + $('#userName').val() + "&userPasswd=" + $('#userPasswd').val() + "&force=true",true,loadUsers);	
+									}
+								}).modal('show');
+								
+							}catch(e)
+							{
+								console.log(e);
+							}
+						});
+					}
+
+			
+		});
+		
+	});	
+</script>
+
+
+
+
+</head>
+
+<body link="#FFFFFF" vlink="#FFFFFF" alink="#FFFFFF">
+
+	<div id=map
+		style="position: fixed; height: 100%; width: 100%; z-index: 1"></div>
+	<div id=bars
+		style="position: fixed; top: 5px; right: 5px; z-index: 100">
+		<i class="big bars icon"></i>
+	</div>
+
+	<div id=menu
+		style="display: none; position: fixed; top: -14px; right: 0px; z-index: 100; width: 170px; height: 100%"
+		class="ui vertical menu">
+		<div style=height:110px; class="item">
+			<div class="menu">
+				&nbsp&nbsp&nbsp&nbsp<i id=hideMenu class="big bars icon"></i>
+				Version 0.0.1
+				<button
+					style="position: relative; top: -35px; left: 120px; font-size: 0.5571429rem; transform: rotate(45deg)"
+					class="mini ui orange button">Beta!</button>
+				<br>
+			</div>
+		</div>
+		<div id=listVeh class="item">
+			<div id=vehicleCountMenu>My Vehicles</div>
+		</div>
+		<div id=listUsers class="item">
+			<div id=userCountMenu>Users</div>
+		</div>
+		<div id=listFriendsDrop class="ui dropdown item">
+			<div id=friendCountMenu>Friends</div>
+			<div style=position:relative;right:400px;top:5px class="left menu">
+			    <a id=listFriends class="item">Show</a>
+				<a id=friendRequests class="item">Requests</a>
+				<a id=friendSentRequests class="item">Sent requests</a>
+			</div>
+		</div>
+
+
+		<div id=orphansDrop class="ui dropdown item">
+			<div id=orphansCountMenu>Orphans</div>
+			<div style=position:relative;right:400px;top:5px class="left menu">
+				<a id=listOrphans class="item">Display</a>
+				<a id=recycleOrphans class="item">Recycle</a>
+				<a id=clearOrphans class="item">Prune</a>
+			</div>
+		</div>
+
+		<div id=mapDrop class="ui dropdown item">
+			Map
+			<div style=position:relative;right:400px;top:5px; class="left menu">
+				<a id=clearMap class="item">Clear</a>
+				<a id=tools class="item">Tools</a>
+			</div>
+		</div>
+
+		<div id=listPlugins class="item">
+			<div id=pluginCountMenu>Plugins</div>
+
+		</div>
+
+		<div id=mySettings class="item">My Settings</div>
+
+		<div id=apiDrop class="ui dropdown item">
+			Read API
+			<div style=position:relative;right:400px id=apiProfile class="left menu">
+				<a class="item">My Profile</a>
+				<a class="item">My Core</a>
+			</div>
+		</div>
+
+
+		<a id=getLogs class="item"> Logs </a>
+		<a id=logout class="item"> <i class="sign-out icon"></i> Logout
+
+	
+	
+	<a  style="position:fixed;top:90px;right:0px;z-index:2000;display:inline;width:168px;" class="ui tiny label">
+  		<i style=display:inline class="ui microchip icon"></i><div style=display:inline  id=memory></div>
+	</a>
+	
+	<div  style=position:fixed;top:70px;right:0px;display:inline;width:168px;z-index:2000 class="ui tiny label">
+  		<i style=display:inline class="ui database icon"></i><div style=display:inline  id=processor></div>
+	</div>
+	
+	<div  style=position:fixed;top:50px;right:2px;display:inline;width:168px;z-index:2000 class="ui tiny label">
+  		<i style=display:inline class="ui coffee icon"></i><div style=display:inline  id=java></div>
+	</div>
+	</div>
+	
+	
+	
+	<div style="position: fixed; bottom: -15px; z-index: 100; overflow-y: scroll; height: 135px; width: 100%">
+
+
+
+
+
+
+
+
+
+		<div id=vehicleList
+			style="position: fixed; display: none; bottom: -15px; width: 100%"
+			class="ui mini menu">
+			<div class="left menu">
+				<div id=vehicleListDrop style=z-index:900 class="ui dropdown item">
+					<div id=vehicleCount></div>
+					<i class="dropdown icon"></i>
+					<div id=vehContent2 class="menu"></div>
+				</div>
+
+				
+
+				
+
+				
+				<div id=optionVeh style="display: none; position: absolute; bottom: 50px; z-index: 800; left: 0px; width: 238px; display: block;" class="ui mini vertical menu">
+					<div id=display class="ui dropdown item"><i style=position:relative;left:-197px class="cogs icon"></i>
+						<i class="dropdown icon"></i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Adv. Options
+						<div class="menu">
+							<div class="ui teal header "><i class="eye icon"></i>Show</div>
+								<a class="item lastPosition"><i class="map marker alternate icon"></i>Last position</a>
+								<a id=today	class="item"><i class="calendar plus outline icon"></i>Today trail</a>
+								<a id=range class="item"><i class="calendar outline icon"></i>Range trail</a>
+								<div class="ui red header"><i class="bolt icon"></i>Inject/Clean</div>
+								<a id=inject class="item"><i class="file code icon"></i>Raw messages</a> 
+								<a id=prune class="item"><i class="trash alternate outline icon"></i>Prune all gps entries</a>
+							</div>
+						</div>
+						
+						
+
+						<a class="item">
+							<div id=maxspeed class="ui teal label">0</div><i class="shipping fast icon"></i> Max Speed
+						</a> <a class="item">
+							<div id=gpsEntry class="ui yellow label">0</div><i class="calendar alternate icon"></i>Gps historics count
+						</a> <a class="item">
+							<div id=azimut class="ui blue label">0</div><i class="compass outline icon"></i> Azimut
+						</a> <a class="item">
+							<div id=lastUpdate class="ui violet label">?</div><i class="clock outline icon"></i> Last
+						</a> 
+						<a class="item">
+							<div id=mylog class="ui purple label">0</div><i class="list icon"></i>Gps log
+						</a>
+						<a class="item">						
+						<div class="ui green button lastPosition"><i class="map outline icon"></i>Show</div>
+						<div id=editableGps  class="ui teal button "><i class="edit icon"></i>Edit</div>
+						</a>
+
+						<div class="item">
+							<button id="closeinfoveh" class="ui small icon button">
+								<i class="close icon"></i>Close
+							</button>
+						</div>
+					</div>
+				</div>
+				<div class="item">
+					<div id=addVeh class="ui blue button"><i class="plus icon"></i>Add new Vehicle</div>
+			</div>
+			<div class="right menu">
+				<div class="item">
+					<div id=hideVeh class="ui grey button"><i class="eye slash outline icon"></i>Hide Menu</div>
+				</div>
+			</div>
+		</div>
+
+
+		<div id=userList
+			style="position: fixed; display: none; bottom: -15px; width: 100%"
+			class="ui mini menu">
+			<div class="left menu">
+				<div id=userListDrop class="ui dropdown item">
+					<div id=userCount></div>
+					<i class="dropdown icon"></i>
+					<div id=userContent2 class="menu"></div>
+				</div>
+
+				<div id=userSelected class="item">
+				</div>
+
+				<div id=editableUser class="item">
+					<div class="ui teal button "><i class="edit icon"></i>Edit</div>
+				</div>
+
+				<div id=addUser class="item">
+					<div class="ui green button "><i class="plus icon"></i>Add User</div>
+				</div>
+			</div>
+				<div class="right menu">
+					<div class="item">
+						<div id=hideUser class="ui grey button"><i class="eye slash outline icon"></i>Hide Menu</div>
+					</div>
+				</div>
+			
+		</div>
+
+		<div id=friendList
+			style="position: fixed; display: none; bottom: -15px; width: 100%"
+			class="ui mini menu">
+			<div class="left menu">
+				<div id=friendListDrop class="ui dropdown item">
+					<div id=friendCount></div>
+					<i class="dropdown icon"></i>
+					<div id=friendContent2 class="menu"></div>
+				</div>
+
+				<div id=friendSelected class="item">
+				
+				</div>
+
+				<div id=deleteFriend class="item">
+					<div class="ui red button "><i class="trash alternate outline"></i>Delete</div>
+				</div>
+
+				<div id=addFriend class="item">
+					<div class="ui green button "><i class="plus icon"></i>Add Friend</div>
+				</div>
+			</div>
+				<div class="right menu">
+					<div class="item">
+						<div id=hideFriend class="ui grey button"><i class="eye slash outline icon"></i>Hide Menu</div>
+					</div>
+				</div>
+			
+		</div>
+
+
+
+		<div id=pluginList
+			style="position: fixed; display: none; bottom: 0px; width: 100%"
+			class="ui mini menu">
+			<div class="left menu">
+				<div id=pluginListDrop class="ui dropdown item">
+					<div id=pluginCount></div>
+					<i class="dropdown icon"></i>
+					<div id=pluginContent2 class="menu"></div>
+				</div>
+
+				<div id=pluginSelected class="item">
+					
+				</div>
+
+				<div id=deletePlugin class="item">
+					<div class="ui red button "><i class="trash alternate outline icon"></i>Delete</div>
+				</div>
+
+				<div id=addPlugin class="item">
+					<div class="ui green button "><i class="plus icon"></i>Add Plugin</div>
+				</div>
+			</div>
+				<div class="right menu">
+					<div class="item">
+						<div id=hidePlugin class="ui grey button"><i class="eye slash outline icon"></i>Hide Menu</div>
+					</div>
+				</div>
+			
+		</div>
+		
+
+
+	
+	</div>
+	<div id=createVeh style=height:600px class="ui modal">
+		<i class="close icon"></i>
+		<div class="header">Vehicle Properties</div>
+		<div class="image content">
+			<div class="description">
+				<div class="ui header">Please fill fields</div>
+				<p>
+				<div id=vehNameShape class="ui left icon input">
+					<input id=vehName type="text" placeholder="Type name here..."><i
+						class="car icon"></i>
+				</div>
+				<p>
+				<div id=gpsList class="ui selection dropdown">
+					<input id=gpsModel type="hidden" name="gpsModel"><i	class="dropdown icon"></i>
+					<div class="default text">Gps Model</div>
+					<div class="menu">
+						<div class="item" data-value="H02">H02</div>
+						<div class="item" data-value="TK103">TK103</div>
+					</div>
+				</div>
+				
+				<p>
+				<div class="ui left icon input">
+					<input id=gpsId type="text" placeholder="Type id / imei here..."><i
+						class="key icon"></i>
+				</div>
+				<div style="position: relative; top: 0px" class="ui button"
+					id=helpimei tabindex="0">
+					Help
+					<div class="hidden content"></div>
+				</div>
+				<div id=helpid style="display:none;position: relative; left: 0px; bottom: -10px; z-index: 300; width: 500px;"
+					class="ui positive message transition">
+					<i id=closehelp class="close icon"></i>
+					<div class="header">
+						<i class="question circle loading icon"></i> Where you could find
+						IMEI / ID
+					</div>
+					<ul class="list">
+						<li>You may find id on hardware documentation.</li>
+						<li>You may find id written on hardware (behind the battery
+							or the cellphone simcard).</li>
+						<li>This number generally composed by 10 digits.</li>
+						<li>Ask Administrator, if he can see a orphans id in his
+							menu.</li>
+					</ul>
+				</div>
+<!-- 				<div id=pluginListAvailable style="position:relative;left:0px;top:10px;width:500px;height:300px"> -->
+<!-- 					<input id=pluginName type="hidden" name="pluginName"><i	class="dropdown icon"></i> -->
+<!-- 					<div class="default text">PluginName</div> -->
+<!-- 					<div id="pluginAvailable" class="menu"> -->
+<!-- 						<div class="item" data-value="H02">H02</div> -->
+<!-- 						<div class="item" data-value="TK103">TK103</div> -->
+						
+<!-- 					</div> -->
+<!-- 				</div> -->
+				<p>
+			
+ 					<div class="inline field">
+    				<label>Select Plugins</label>
+						<select id=pluginListAvailable multiple="" class="label ui selection fluid dropdown">
+							 
+						</select>
+					</div>
+				
+			</div>
+		</div>
+		<div style=position:relative;top:60px class="actions">
+			<div id=buttonDeleteGps class="ui red delete button">Delete !</div>
+			<div class="ui black deny button">Cancel</div>
+			<div id=buttonAddVeh class="ui positive right labeled icon button">
+				Valid <i class="checkmark icon"></i>
+			</div>
+		</div>
+	</div>
+
+	<div id=mySettingsModal style="z-index: 100;width:100%;height:100%" class="ui modal">
+		<div class="header">User Settings</div>
+		<div class="image content">
+			<div class="description">
+				<div class="ui people shape">
+					<div class="sides">
+						<div style="height:70%" class="side active">
+							<div class="ui card">
+								<div class="image">
+									<i class="massive user icon"></i>
+									<button style="position: relative; left: 130px; width: 160px"
+										class="ui blue labeled icon button">
+										<i class="cloud upload icon"></i>Change Avatar
+									</button>
+								</div>
+								<div class="content">
+									<div id=userId class="header">User</div>
+									<div class="meta">
+										a Gps Pimper
+										<div id=rating style="z-index: 120" class="ui star rating"
+											data-rating="3"></div>
+										<br> Total 134km<br> 24 gps messages
+									</div>
+									<div id=userDescription class="description"></div>
+								</div>
+								<div class="extra content">
+									<span id=userJoin class="right floated"> </span> <span>
+										<i id=userFriendCount class="user icon"></i> 151 Friends
+									</span> <span> <i id=userVehCount class="user icon"></i> 3
+										vehicles
+									</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div style=position:absolute;bottom:180px;left:20px;z-index:1200 class="ui left corner labeled input">
+					<input id=usermail type="text" placeholder="email">
+					<div class="ui left corner label">
+						<i class="envelope outline icon"></i>
+					</div>
+				</div>
+				<br>
+				<div class="ui slider checkbox"
+					style="position: absolute; left: 20px; bottom: 150px">
+					<input type="checkbox"> <label>Display avatars
+						on map.</label>
+				</div>
+				<div class="ui slider checkbox"
+					style="position: absolute; left: 20px; bottom: 120px">
+					<input type="checkbox"> <label>Display friend's
+						avatars on map.</label>
+				</div>
+				<div class="ui slider checkbox"
+					style="position: absolute; left: 20px; bottom: 90px">
+					<input type="checkbox"> <label>Display live
+						informations.</label>
+				</div>
+			</div>
+			<div
+				style="position: absolute; left: 20px; bottom: -30px; height: 100px"
+				class="actions">
+				<div id=cancelSettings class="ui black deny button">Cancel</div>
+				<div id=validSettings class="ui positive right labeled icon button">
+					Valid <i class="checkmark icon"></i>
+				</div>
+			</div>
+		</div>
+	</div>
+
+
+	<div id=createPlugin class="ui modal">
+		<i class="close icon"></i>
+		<div class="header">Plugin upload</div>
+		<div class="image content">
+			<div class="description"></div>
+		</div>
+		<div class="actions">
+			<div class="ui black deny button">Cancel</div>
+			<div id=buttonAddVeh class="ui positive right labeled icon button">
+				Valid <i class="checkmark icon"></i>
+			</div>
+		</div>
+	</div>
+
+	<div id=injectModal class="ui modal">
+		<i class="close icon"></i>
+		<div class="header">Raw messages injection</div>
+		<div class="image content">
+			<div class="description">
+				<div class="ui toggle checkbox">
+					<input id=checkPrune type="checkbox" name="public"> <label>Prune
+						all gps entries before injection</label>
+				</div>
+				<br> <br>
+				<div class="field">
+					<div class="ui radio checkbox">
+						<input id=keepDate type="radio" name="frequency" checked="checked">
+						<label>Keep genuine date</label>
+					</div>
+				</div>
+				<br>
+				<div class="field">
+					<div class="ui radio checkbox">
+						<input type="radio" name="frequency"> <label>Inject
+							with today day (Hour/Minute/Second don't change)</label>
+					</div>
+				</div>
+				<br>
+				<textarea id=messages style="width: 100%"
+					placeholder="Paste raw messages here (ex: *HQ,$$$$$$$$$$,V1,163618,A,4039.7131,N,00653.1244,E,028.80,323,260919,FFFFFBFF,208,01,0,0,6# ), one line per message"
+					rows="3"></textarea>
+			</div>
+		</div>
+		<div class="actions">
+			<div class="ui black deny button">Cancel</div>
+			<div class="ui positive right labeled icon button">
+				Injection <i class="checkmark icon"></i>
+			</div>
+		</div>
+	</div>
+
+	<div id=createUser class="ui modal">
+		<i class="close icon"></i>
+		<div class="header">User Properties</div>
+		<div class="image content">
+			<div class="description">
+				<div class="ui header">Please enter a name, and a password</div>
+				<p>
+				<div id=userNameShape class="ui left icon input">
+					<input id=userName type="text" placeholder="Type name here..."><i
+						class="user icon"></i>
+				</div>
+				<p>
+				<div class="ui left icon input">
+					<input id=userPasswd type="text" placeholder="Type passwd here..."><i
+						class="key icon"></i>
+				</div>
+			</div>
+		</div>
+		<div class="actions">
+		    <div id=buttonDeleteUser class="ui black deny button">Delete</div>
+			<div class="ui black deny button">Cancel</div>
+			<div id=buttonAddUser class="ui positive right labeled icon button">
+				Valid <i class="checkmark icon"></i>
+			</div>
+		</div>
+	</div>
+
+	<div id=createFriend class="ui modal">
+		<i class="close icon"></i>
+		<div class="header">Choose Friend</div>
+		<div class="image content">
+			<div class="description">
+				<p>
+				<div id=friendzList class="ui selection dropdown">
+					<input id=friendName type="hidden" name="friendName"><i
+						class="dropdown icon"></i>
+					<div class="default text">Friends</div>
+					<div id=friendsList class="menu"></div>
+				</div>
+			</div>
+		</div>
+		<div class="actions">
+			<div class="ui black deny button">Cancel</div>
+			<div id=buttonAddFriend class="ui positive right labeled icon button">
+				Valid <i class="checkmark icon"></i>
+			</div>
+		</div>
+	</div>
+
+	<div id=chooseDate class="ui modal">
+		<i class="close icon"></i>
+		<div class="header">Choose Range</div>
+		<div class="image content">
+			<div class="ui input">
+				<input id="from" name="from" type="text" placeholder="From...">
+			</div>
+			<div class="ui input">
+				<input id="to" name="to" type="text" placeholder="To...">
+			</div>
+
+		</div>
+		<div class="actions">
+			<div class="ui black deny button">Cancel</div>
+			<div id=buttonAddFriend class="ui positive right labeled icon button">
+				Valid <i class="checkmark icon"></i>
+			</div>
+		</div>
+	</div>
+
+
+	<div id=listSentRequests class="ui modal">
+		<i class="close icon"></i>
+		<div class="header">Sent requests:</div>
+		<div class="image content">
+			<div class="description">
+				<div id=sentRequestsList class="ui middle aligned selection list">
+
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div id=listRequests class="ui modal">
+		<i class="close icon"></i>
+		<div class="header">Friend Requests:</div>
+		<div class="image content">
+			<div class="description">
+				<div id=requestsList class="ui middle aligned selection list">
+
+				</div>
+			</div>
+		</div>
+	</div>
+
+
+
+	<div id=noEntry
+		style="display:none;position:fixed;z-index: 100; left: 0px; bottom: 40px;width:100%"
+		class="ui negative message">
+		<i id=noEntryClose class="close icon"></i>
+		<div id=noEntryHead class="header"></div>
+		<p>No gps entry found for this vehicle. Pick up another</p>
+	</div>
+
+	<div id=selectVeh
+		style="display: none; z-index: 100; left: 100px; top: -3px"
+		class="ui negative message">
+		<i id=selectVehClose class="close icon"></i>
+		<div id=selectVehHead class="header"></div>
+		<p>Please pick-up a vehicle on the bottom left dropdown</p>
+	</div>
+	
+	<div id=selectUser
+		style="display: none; z-index: 100; left: 100px; top: -3px"
+		class="ui negative message">
+		<i id=selectUserClose class="close icon"></i>
+		<div id=selectUserHead class="header"></div>
+		<p>Please pick-up a user on the bottom left dropdown</p>
+	</div>
+	
+	<div id=selectFriend
+		style="display: none; z-index: 100; left: 100px; top: -3px"
+		class="ui negative message">
+		<i id=selectFriendClose class="close icon"></i>
+		<div id=selectFriendHead class="header"></div>
+		<p>Please pick-up a friend on the bottom left dropdown</p>
+	</div>
+	
+	<div id=selectPlugin
+		style="display: none; z-index: 100; left: 100px; top: -3px"
+		class="ui negative message">
+		<i id=selectPluginClose class="close icon"></i>
+		<div id=selectPluginHead class="header"></div>
+		<p>Please pick-up a plugin on the bottom left dropdown</p>
+	</div>
+	
+	<div id=logsConsole style="position:fixed;display:none;background-color:rgba(0,0,0,0.5);top:0px;width:100%;height:500px;z-index:1000;border-width:1px;border:solid lightgreen;">
+		<div style="height:450px;overflow:scroll;z-index:1100;line-height:10px;" id=logContent></div>
+		<i style="position:fixed;right:10px;top:470px" id=closeLogs class="green close icon"></i>
+		<div id=checkDebug class="ui white slider checkbox" style="position:fixed;left:5px;top:470px" >
+			<input type="checkbox"> <label style=color:lightgreen>Debug.</label>
+		</div>
+		<div id=checkAutoRefresh class="ui white slider checkbox" style="position:fixed;left:150px;top:470px" >
+			<input id=auto-refresh type="checkbox" checked="checked"> <label style=color:lightgreen>Auto-Refresh.</label>
+		</div>
+		<div style="position:fixed;left:350px;top:460px" class="ui mini input focus">
+ 			 <input id=include style=background-color:rgba(0,0,0,0.5);color:lightgreen type="text" placeholder="Search...">
+		</div>
+		<div style="position:fixed;left:520px;top:460px" class="ui mini input focus">
+ 			 <input id=exclude style=background-color:rgba(0,0,0,0.5);color:lightgreen type="text" placeholder="Exclude...">
+		</div>
+	</div>
+
+	<div id=confirm class="ui modal">
+		<div class="header">Confirm Delete <div id=deleteObject></div></div>
+		<div class="content">
+			<p></p>
+		</div>
+		<div class="actions">
+			<div class="ui approve button">Delete</div>
+			<div class="ui cancel button">Cancel</div>
+		</div>
+	</div>
+
+
+</body>
+</html>

@@ -1,0 +1,10 @@
+echo "Version (1.1): " 
+read VERSION
+docker build --tag pimpmygps:$VERSION .
+docker login
+
+docker tag pimpmygps:$VERSION docker.io/coxifred/pimpmygps:$VERSION
+docker push coxifred/pimpmygps:$VERSION
+
+docker tag docker.io/coxifred/pimpmygps:$VERSION docker.io/coxifred/pimpmygps:latest
+docker push docker.io/coxifred/pimpmygps:latest

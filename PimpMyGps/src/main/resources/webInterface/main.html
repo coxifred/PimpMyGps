@@ -1,0 +1,540 @@
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<html>
+<head>
+
+
+
+
+<link rel="stylesheet" type="text/css" href="css/modal/basic.css" />
+<link rel="stylesheet" type="text/css" href="css/jquery/jquery-ui.css" />
+<link rel="stylesheet" type="text/css" href="css/lc_switch.css" />
+<link rel="stylesheet" type="text/css" href="css/semantic.css" />
+
+
+
+<script type="text/javascript" src="javascript/utils.js"></script>
+<script type="text/javascript" src="javascript/semantic.js"></script>
+<script type="text/javascript" src="javascript/lc_switch.js"></script>
+<script type="text/javascript" src="javascript/logged.js"></script>
+<link rel="stylesheet" type="text/css" href="css/skittles.css" />
+<link rel="stylesheet" type="text/css" href="css/animate.css" />
+
+<style>
+body {
+background-image:url(images/grumman-f-14.jpg);
+}
+</style>
+
+<script>
+
+
+	$(document).ready(function() {
+		
+		loadVehicles();loadUsers();loadAvailableFriends();loadSentRequests();loadReceiveRequests();
+
+		$('#sub').dropdown();
+		$('#gpsList').dropdown();
+		
+		$('#friendzList').dropdown();
+		
+		$('#listVeh').click(function (e) {
+			console.log("veh");
+			$("#vehicleList").show();
+			$("#userList").hide();
+		});
+		
+		$('#listFriends').click(function (e) {
+			$("#userList").show();
+			$("#vehicleList").hide();
+		});
+		
+		
+		$('#logout').click(function (e) {
+			getValueFromUrl("admin?action=logout",true,function(){
+			setUrl("/index.html");
+			});
+		});
+		
+		$('#addVeh').click(function (e) {
+			$("#createVeh").modal('show');
+		});
+		
+		$('#addFriend').click(function (e) {
+			$("#createFriend").modal('show');
+		});
+		
+		$('#friendSentRequests').click(function (e) {
+			getValueFromUrl("admin?action=getMe",true,function(aJson){
+				try {
+						me=JSON.parse(aJson);
+						console.log(me);
+						loadSentRequestsList();
+						$("#listSentRequests").modal('show');
+					} catch (e)
+					{
+						
+					}
+			});	
+		});
+		
+			$('#friendRequests').click(function (e) {
+				getValueFromUrl("admin?action=getMe",true,function(aJson){
+					try {
+							me=JSON.parse(aJson);
+							console.log(me);
+							loadRequestsList();
+							$("#listRequests").modal('show');
+						} catch (e)
+						{
+							
+						}
+				});	
+				
+				
+			});
+			
+		
+	
+		$('#buttonAddVeh').click(function (e) {
+			// Check if name is already take by user
+			checkIfVehicleIsPresent($('#vehName').val());
+		});
+		
+		$('#buttonAddUser').click(function (e) {
+			getValueFromUrl("admin?action=sendRequest&targetName=" + $('#friendzList').dropdown('get value'),true,loadSentRequests);
+		});
+		
+		
+		function loadSentRequests()
+		{
+			getValueFromUrl("admin?action=getMe",true,function(aJson){
+				try {
+						me=JSON.parse(aJson);
+						$("#friendSentRequests").html("Friends sent requests<div style=position:relative;top:-3px; class=\"ui teal left pointing label\">" + me.sentRequests.length + "</div>");
+					} catch (e)
+					{
+						
+					}
+			});
+		}
+		
+		function loadSentRequestsList()
+		{
+			getValueFromUrl("admin?action=getMe",true,function(aJson){
+				try {
+						me=JSON.parse(aJson);
+						console.log(me);
+						
+						html="";
+						
+						for (i=0;i<me.sentRequests.length;i++)
+							{
+								html += "<div class=\"item\">";
+									html += "<i class=\"enveloppe icon\"></i>";
+									html += "<div class=\"content\">";
+										html += " <div  class=\"header\">" + me.sentRequests[i] + "&nbsp;<button id=\"" + me.sentRequests[i] + "\" class=\"mini ui red button deleteSent\">Delete</button></div>";
+									html += "</div>";
+								html += "</div>";
+							}
+						console.log("html: " + html);						
+						$("#sentRequestsList").html(html);
+					} catch (e)
+					{
+						console.log(e);
+					}
+			});
+		}
+		
+		function loadRequestsList()
+		{
+			getValueFromUrl("admin?action=getMe",true,function(aJson){
+				try {
+						me=JSON.parse(aJson);
+						console.log(me);
+						
+						html="";
+						
+						for (i=0;i<me.requests.length;i++)
+							{
+								html += "<div class=\"item\">";
+									html += "<i class=\"enveloppe icon\"></i>";
+									html += "<div class=\"content\">";
+										html += " <div  class=\"header\">" + me.requests[i] + "&nbsp;<button id=\"" + me.requests[i] + "\" class=\"mini ui green button acceptReceive\">Accept Friend Request</button></div>";
+									html += "</div>";
+								html += "</div>";
+							}
+						console.log("html: " + html);						
+						$("#requestsList").html(html);
+					} catch (e)
+					{
+						console.log(e);
+					}
+			});
+		}
+		
+		
+		
+		function loadReceiveRequests()
+		{
+			console.log("loadReceiveRequests");
+			getValueFromUrl("admin?action=getMe",true,function(aJson){
+				try {
+						me=JSON.parse(aJson);
+						$("#friendRequests").html("Friends requests<div style=position:relative;top:-3px; class=\"ui green left pointing label\">" + me.requests.length + "</div>");
+					} catch (e)
+					{
+						
+					}
+			});
+		}
+		
+		
+		function checkIfVehicleIsPresent(vehicleName)
+		{
+			getValueFromUrl("admin?action=checkIfVehicleIsPresent&vehicleName=" + vehicleName,true,function(exist){
+				console.log(exist);
+				if ( exist == "true" )
+					{
+					console.log("present  true");
+					
+					}else
+						{
+						console.log("Create");
+						getValueFromUrl("admin?action=addVehicle&vehicleName=" + $('#vehName').val()+"&gpsName=" + $('#gpsList').dropdown('get value')+"&gpsId=" + $('#gpsId').val(),true,loadVehicles);
+						}
+			});
+		}
+		
+		
+		
+		function loadUsers()
+		{
+			console.log("Load users");
+			getValueFromUrl("admin?action=getUsers",true,fillTableUsers);
+		}
+		
+		function loadVehicles()
+		{
+			console.log("Load vehz");
+			getValueFromUrl("admin?action=getVehicles",true,fillTableGps);
+		}
+		
+		function fillTableGps(vehz)
+		{
+			console.log("Fill table with " + vehz);
+			var html="";
+			try{
+			jsonVehs=JSON.parse(vehz);
+			console.log(jsonVehs);
+			
+			for ( i=0;i<jsonVehs.length;i++)
+	 		{
+				console.log("i=" + i);
+				html+="<tr>";
+					html+="<td>" + jsonVehs[i].name + "</td>";
+					html+="<td>" + jsonVehs[i].lastUpdate + "</td>";
+					html+="<td>" + jsonVehs[i].gps.protocol + "</td>";
+					html+="<td><div id=\"" + jsonVehs[i].name + "\" class=\"ui vertical animated button mappable\" tabindex=\"0\"><div class=\"hidden content\">Map</div><div class=\"visible content\"><i class=\"globe icon\"></i></div></div></td>";
+					html+="<td><div id=\"" + jsonVehs[i].name + "\" class=\"ui vertical animated button editableGps\" tabindex=\"0\"><div class=\"hidden content\">Edit</div><div class=\"visible content\"><i class=\"pencil alternate icon\"></i></div></div></td>";
+					html+="<td><div id=\"" + jsonVehs[i].name + "\" class=\"ui vertical animated button deleteableGps\" tabindex=\"0\"><div class=\"hidden content\">Delete</div><div class=\"visible content\"><i class=\"trash alternate icon\"></i></div></div></td>";
+				html+="</tr>";
+		 	}
+			
+			} catch (e)
+			{}
+			$("#vehContent").html(html);
+		}
+		
+		
+		function loadAvailableFriends()
+		{
+			getValueFromUrl("admin?action=listUsers",true,fillAvailableFriends);
+		}
+		
+		function fillAvailableFriends(friends)
+		{
+			console.log("Fill table with " + friends);
+			var html="";
+			try{
+			jsonFriends=JSON.parse(friends);
+			console.log(jsonFriends);
+			
+			for ( i=0;i<jsonFriends.length;i++)
+	 		{
+				console.log("i=" + i);
+				html+="<div class=\"item\" data-value=\"" +jsonFriends[i] + "\">" + jsonFriends[i]  + "</div>";
+		 	}
+			
+			} catch (e)
+			{}
+			$("#friendsList").html(html);
+		}
+		
+		function fillTableUsers(users)
+		{
+			console.log("Fill users table with " + users);
+			var html="";
+			try{
+			jsonUsers=JSON.parse(users);
+			console.log(jsonUsers);
+			
+			for ( i=0;i<jsonUsers.length;i++)
+	 		{
+				console.log("i=" + i);
+				html+="<tr>";
+					html+="<td>" + jsonUsers[i]+ "</td>";
+					html+="<td><div id=\"" + jsonUsers[i] + "\" class=\"ui vertical animated button mappable\" tabindex=\"0\"><div class=\"hidden content\">Map</div><div class=\"visible content\"><i class=\"globe icon\"></i></div></div></td>";
+					html+="<td><div id=\"" + jsonUsers[i] + "\" class=\"ui vertical animated button unfriend\" tabindex=\"0\"><div class=\"hidden content\">Unfriend</div><div class=\"visible content\"><i class=\"user times icon\"></i></div></div></td>";
+				html+="</tr>";
+		 	}
+			
+			} catch (e)
+			{
+				console.log(e);
+				
+			}
+			$("#userContent").html(html);
+		}
+		
+		$("body").delegate(".deleteableGps", "click", function(){
+			id=$(this).attr("id");
+			$('#confirm')
+			  .modal({
+				onApprove : function() {
+					getValueFromUrl("admin?action=removeVehicle&vehicleName=" + id,true,loadVehicles);
+				    }
+			}).modal('show');
+		});
+		
+		$("body").delegate(".unfriend", "click", function(){
+			id=$(this).attr("id");
+			$('#confirm')
+			  .modal({
+				onApprove : function() {
+					getValueFromUrl("admin?action=removeFriend&targetName=" + id,true,loadUsers);
+				    }
+			}).modal('show');
+		});
+		
+		$("body").delegate(".deleteSent", "click", function(){
+			id=$(this).attr("id");
+			$('#confirm')
+			  .modal({
+				onApprove : function() {
+					getValueFromUrl("admin?action=removeSentRequest&targetName=" + id,true,loadSentRequests);
+				    }
+			}).modal('show');
+		});
+		
+		
+		$("body").delegate(".acceptReceive", "click", function(){
+			id=$(this).attr("id");
+			getValueFromUrl("admin?action=acceptRequest&targetName=" + id,true,loadReceiveRequests);
+			$(this).css("display","none");
+		});
+		
+		
+		$("body").delegate(".mappable", "click", function(){
+			id=$(this).attr("id");
+		
+			$('#map')
+			  .modal('show');
+		});
+		
+		$("body").delegate(".editableGps", "click", function(){
+			id=$(this).attr("id");
+			getValueFromUrl("admin?action=getVehicle&vehicleName="+id,true,function(aVeh){
+				try{
+					jsonVeh=JSON.parse(aVeh);
+					console.log(jsonVeh);
+					$("#vehName").val(jsonVeh.name);
+					$('#gpsList').dropdown('set selected',jsonVeh.gps.protocol)
+					$("#gpsId").val(jsonVeh.gps.id);
+					$("#createVeh").modal({
+						onApprove : function() {
+						getValueFromUrl("admin?action=addVehicle&vehicleName=" + $('#vehName').val()+"&gpsName=" + $('#gpsList').dropdown('get value')+"&gpsId=" + $('#gpsId').val(),true,loadVehicles);	
+						}
+					}).modal('show');
+					
+				}catch(e)
+				{
+					
+				}
+				
+			});
+			
+		});
+		
+		
+	});	
+</script>
+
+
+
+
+</head>
+
+<body  link="#FFFFFF" vlink="#FFFFFF" alink="#FFFFFF">
+
+
+
+<div class="ui vertical menu">
+  <div class="item">
+    My Vehicles
+    <div class="menu">
+      <a id=addVeh class="item">Add</a>
+      <a id=listVeh class="item">List</a>
+    </div>
+  </div>
+  <div class="item">
+    Friends
+    <div class="menu">
+      <a id=addFriend class="item">Add Friend</a>
+      <a id=listFriends class="item">List Friends</a>
+      <a id=friendRequests class="item">Friends requests</a>
+      <a id=friendSentRequests class="item">Friends sent requests</a>
+    </div>
+  </div>
+ <a id=logout class="item">
+    <i  class="sign-out icon"></i> Logout
+  </a>
+</div>
+
+
+			<table id=vehicleList class="ui selectable inverted table">
+			  <thead>
+			    <tr>
+			      <th>Name</th>
+   			      <th>Last update</th>
+   			      <th>Gps model</th>
+			      <th>Show on map</th>
+   			      <th>Edit</th>
+   			      <th>Delete</th>
+			    </tr>
+			  </thead>
+			  <tbody id=vehContent>
+			  </tbody>
+			</table>
+
+			
+			<table id=userList style=display:none class="ui selectable inverted table">
+			  <thead>
+			    <tr>
+			      <th>Name</th>
+			      <th>Show on map</th>
+   			      <th>UnFriend</th>
+			    </tr>
+			  </thead>
+			  <tbody id=userContent>
+			  </tbody>
+			</table>
+
+
+			<div id=createVeh class="ui modal">
+  					<i class="close icon"></i>
+				  <div class="header">
+				    Vehicle Properties
+				  </div>
+				  <div class="image content">
+				    <div class="description">
+				      <div class="ui header">Please enter a name,select a Gps model and fill the id device</div>
+				      <p><div class="ui left icon input"><input id=vehName type="text" placeholder="Type name here..."><i class="car icon"></i></div></p>
+				      <p><div id=gpsList class="ui selection dropdown"><input id=gpsModel type="hidden" name="gpsModel"><i class="dropdown icon"></i><div class="default text">Gps Model</div>  <div class="menu"><div class="item" data-value="H02">H02</div><div class="item" data-value="TK103">TK103</div></div></div></p>
+   				      <p><div class="ui left icon input"><input id=gpsId type="text" placeholder="Type id here..."><i class="key icon"></i></div><div style=pposition:relative;top:-2px class="ui animated button" tabindex="0"><div class="visible content">Help</div><div class="hidden content"><i class="help icon"></i></div></div></p>
+				    </div>
+				  </div>
+				  <div class="actions">
+				    <div class="ui black deny button">
+				      Nope
+				    </div>
+				    <div id=buttonAddVeh class="ui positive right labeled icon button">
+				      Yep, that's me
+				      <i class="checkmark icon"></i>
+				    </div>
+				  </div>
+				</div>
+				
+				
+			<div id=createFriend class="ui modal">
+  					<i class="close icon"></i>
+				  <div class="header">
+				    Choose Friend
+				  </div>
+				  <div class="image content">
+				    <div class="description">
+				      <p><div id=friendzList class="ui selection dropdown"><input id=friendName type="hidden" name="friendName"><i class="dropdown icon"></i><div class="default text">Friends</div>  <div id=friendsList class="menu"></div></div></p>
+				    </div>
+				  </div>
+				  <div class="actions">
+				    <div class="ui black deny button">
+				      Cancel
+				    </div>
+				    <div id=buttonAddUser class="ui positive right labeled icon button">
+				      Valid
+				      <i class="checkmark icon"></i>
+				    </div>
+				  </div>
+				</div>
+				
+				
+				<div id=listSentRequests class="ui modal">
+  					<i class="close icon"></i>
+				  <div class="header">
+				    Sent requests:
+				  </div>
+				  <div class="image content">
+				    <div class="description">
+				     <div id=sentRequestsList class="ui middle aligned selection list">
+								  
+					 </div>
+				    </div>
+				  </div>
+				</div>
+				
+				<div id=listRequests class="ui modal">
+  					<i class="close icon"></i>
+				  <div class="header">
+				    Friend Requests:
+				  </div>
+				  <div class="image content">
+				    <div class="description">
+				     <div id=requestsList class="ui middle aligned selection list">
+								  
+					 </div>
+				    </div>
+				  </div>
+				</div>
+				
+				
+				
+				
+				
+				
+<div id=confirm class="ui modal">
+  <div class="header">Confirm Delete</div>
+  <div class="content">
+    <p></p>
+  </div>
+  <div class="actions">
+    <div class="ui approve button">Delete</div>
+    <div class="ui cancel button">Cancel</div>
+  </div>
+</div>
+
+
+<div id=map class="ui fullscreen modal">
+  <div class="header">Map</div>
+  <div class="content">
+    <p>
+    
+    <iframe width="425" height="350" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="https://www.openstreetmap.org/export/embed.html?bbox=6.83376431465149%2C47.64864334239881%2C6.847926378250122%2C47.65509009823567&amp;layer=mapnik&amp;marker=47.651866819795664%2C6.840845346450806&marker=47.651266819795664%2C6.840845346450806" style="border: 1px solid black"></iframe>
+    
+    </p>
+  </div>
+  <div class="actions">
+    <div class="ui approve button">Approve</div>
+  </div>
+</div>
+
+</body>
+</html>
