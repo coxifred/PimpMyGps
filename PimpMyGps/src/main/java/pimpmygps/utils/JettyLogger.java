@@ -3,6 +3,8 @@ package pimpmygps.utils;
 import org.eclipse.jetty.util.log.AbstractLogger;
 import org.eclipse.jetty.util.log.Logger;
 
+import pimpmygps.core.Core;
+
 public class JettyLogger extends AbstractLogger{
 	
 	public static boolean debug=false;
@@ -93,7 +95,10 @@ public class JettyLogger extends AbstractLogger{
 
 	private void trace(String message)
 	{
-		Fonctions.trace("DBG", message, "JETTY");
+		if ( Core.getInstance().getDebugJetty())
+		{
+			Fonctions.trace("DBG", message, "JETTY");
+		}
 	}
 	
 	private String format(String msg, Object... args)

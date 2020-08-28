@@ -27,12 +27,13 @@
 	
 		$("#login").click(function(e){
 			
-		getValueFromUrl("admin?action=login&user=" + $("#user").val() + "&passwd=" + $("#passwd").val(),true,toMainMenu);
+			getValueFromUrl("admin?action=login&user=" + $("#user").val() + "&passwd=" + $("#passwd").val(),true,toMainMenu);
 		});
 		
 		
 		function toMainMenu(logged)
 		{
+		 
 		 setUrl(logged);
 		}
 	});	

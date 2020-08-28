@@ -848,7 +848,7 @@ html, body, #map {
 //  					}
 					getValueFromUrl("admin?action=inject&gpsName=" + currentVehicle + "&clean=" + document.querySelector('#checkPrune').checked + "&keepDate=" + document.querySelector('#keepDate').checked+"&data=" + encodeURIComponent($("#messages").val()),true,function () {
 
-						//loadVehicles();
+						loadVehicles();
 						loadOrphans();
 						$("#optionVeh").hide();
 					});
@@ -898,9 +898,7 @@ html, body, #map {
 	            .setLatLng(markerLocation)
 	            .setContent('<p>Made in Franche Comte !</p><a target=new href=https://github.com/coxifred/PimpMyGps>https://github.com/coxifred/PimpMyGps</a>')
 	            .openOn(map);
-	  
-			
-		}
+	     }
 		
 		function fillTableGps(vehz)
 		{
@@ -1142,6 +1140,7 @@ html, body, #map {
 				{
 				$("#noEntryHead").html(jsonVeh.name + ", can't display this vehicle because:");
 				$("#noEntry").show();
+				displayMadeInFc();
 				}else
 					{
 						// Center Map on vehicule in 2nd parameter
@@ -1888,7 +1887,7 @@ html, body, #map {
 		class="ui negative message">
 		<i id=noEntryClose class="close icon"></i>
 		<div id=noEntryHead class="header"></div>
-		<p>No gps entry found for this vehicle. Pick up another</p>
+		<p>For the moment, there is no gps entry this vehicle. Wait or pick up another</p>
 	</div>
 
 	<div id=selectVeh

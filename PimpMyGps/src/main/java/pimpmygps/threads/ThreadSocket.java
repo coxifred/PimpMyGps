@@ -143,7 +143,7 @@ public class ThreadSocket extends Thread {
 	public static MasterDecoder findHardwareByName(String name) {
 		MasterDecoder findMd = null;
 		try {
-			Class<?> aClass = (Class<?>) Class.forName("com.pimpmygps.hardware." + name);
+			Class<?> aClass = (Class<?>) Class.forName("pimpmygps.hardware." + name);
 			try {
 				findMd = (MasterDecoder) aClass.getConstructor(new Class<?>[0]).newInstance();
 				if (findMd != null) {

@@ -25,7 +25,7 @@ public class ThreadSocketDeclarator extends Thread {
 							&& !"".equals(aVehicle.getGps().getProtocol())) {
 						try {
 							Class<?> aClass = Class
-									.forName("com.pimpmygps.hardware." + aVehicle.getGps().getProtocol());
+									.forName("pimpmygps.hardware." + aVehicle.getGps().getProtocol());
 							try {
 								MasterDecoder aGps = (MasterDecoder) aClass.getDeclaredConstructor().newInstance();
 								if (portToSocket.containsKey(aGps.getPort())) {
@@ -42,12 +42,12 @@ public class ThreadSocketDeclarator extends Thread {
 									createNewThreadSocket(aGps.getPort());
 								}
 							} catch (Exception e) {
-								Fonctions.trace("ERR", "Couldn't instanciate class com.pimpmygps.filters.decoders."
+								Fonctions.trace("ERR", "Couldn't instanciate class pimpmygps.filters.decoders."
 										+ aVehicle.getGps().getProtocol() + " error " + e.getMessage(), "CORE");
 								e.printStackTrace();
 							}
 						} catch (ClassNotFoundException e) {
-							Fonctions.trace("ERR", "Couldn't find class with name " + "com.pimpmygps.hardware."
+							Fonctions.trace("ERR", "Couldn't find class with name " + "pimpmygps.hardware."
 									+ aVehicle.getGps().getProtocol() + " this protocol is unknown from PimpMyGps",
 									"CORE");
 						}

@@ -48,6 +48,11 @@ public class Core {
 	 * Debug mode
 	 */
 	Boolean debug = false;
+	
+	/**
+	 * Debug mode for Jetty
+	 */
+	Boolean debugJetty = false;
 
 	/**
 	 * Webserver
@@ -327,6 +332,14 @@ public class Core {
 
 	public void setDataPath(String dataPath) {
 		this.dataPath = dataPath;
+	}
+
+	public Boolean getDebugJetty() {
+		return debugJetty;
+	}
+
+	public void setDebugJetty(Boolean debugJetty) {
+		this.debugJetty = debugJetty;
 	}
 
 }

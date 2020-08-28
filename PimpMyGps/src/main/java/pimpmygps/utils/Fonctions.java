@@ -26,7 +26,7 @@ public class Fonctions {
 	public static List<String> currentBuffer = new ArrayList<String>();
 
 	public static void trace(String type, String message, String from) {
-		String date = Fonctions.getDateFormat(new Date(), "HH:mm:ss.SSS");
+		String date = Fonctions.getDateFormat(new Date(), "dd/MM/YYYY HH:mm:ss.SSS");
 		String threadId=String.format("%02d", Thread.currentThread().getId());
 		String line = date + " [Thread-" + threadId + "] " + type + " " + from + " - " + message;
 		Log aLog=new Log(new Date(),date,threadId,type,from,message);

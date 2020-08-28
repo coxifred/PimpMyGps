@@ -158,16 +158,16 @@ public class User {
 			List<Gps> toRemove=new ArrayList<Gps>();
 			for ( Gps aGps:aVeh.getGps().getHistoric())
 			{
-				aGps.clear();
-				// Remove 0 longitude and 0 latitude
-				if ( aGps.getLatitude().doubleValue() == 0 && aGps.getLongitude() == 0)
+				//aGps.clear();
+				// Remove 0 longitude and 0 latitude and longitude/latitude null
+				if (   aGps.getLongitude() == null || aGps.getLatitude() == null ||  ( aGps.getLatitude().doubleValue() == 0 && aGps.getLongitude().doubleValue() == 0))
 				{
 					toRemove.add(aGps);
 				}
 			}
 			for ( Gps aRemove:toRemove)
 			{
-				Fonctions.trace("WNG", "Remove bad 0 latitude and longitude", "CORE");
+				Fonctions.trace("WNG", "Remove bad 0 or null latitude and longitude", "CORE");
 				aVeh.getGps().getHistoric().remove(aRemove);
 			}
 		}

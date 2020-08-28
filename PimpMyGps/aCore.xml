@@ -3,6 +3,7 @@
   <webServerPort>443</webServerPort>
   <http2>false</http2>
   <webServerIp>192.168.2.186</webServerIp>
-  <debug>false</debug>
+  <debug>true</debug>
+  <debugJetty>false</debugJetty>
   <adminPassword>admin</adminPassword>
 </pimpmygps.core.Core>

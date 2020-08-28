@@ -1,3 +1,5 @@
 /.settings/
 /build/
 /.gradle/
+/pimpMyGps_user_admin.xml
+/pimpMyGps_user_guest.xml

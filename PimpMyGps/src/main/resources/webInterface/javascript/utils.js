@@ -70,6 +70,7 @@
 		var retour; 
 		try 
 		{
+		
 		var request = $
 				.ajax({
 					url : theUrl,
@@ -78,7 +79,7 @@
 					async : asyncMode,
 					dataType : "html",
 						error:function(xhr, status, errorThrown) {
-//						alert("ERROR ! " + errorThrown+'\n'+status+'\n'+xhr.statusText);
+							//alert("ERROR ! " + errorThrown+'\n'+status+'\n'+xhr.statusText);
 							retour="ERROR";
 				        } 
 				});
@@ -87,6 +88,7 @@
 				.done(function(msg) {
 					if ( typeof myfunction != "undefined" )
 						{
+		
 						myfunction(msg);
 						}else
 							{

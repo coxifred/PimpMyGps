@@ -39,6 +39,12 @@ public class AdminServlet extends HttpServlet {
 
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		perform(request, response);
+	}
+	
+	
+
+	private void perform(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		if (request.getParameter("action") != null) {
 			String action = request.getParameter("action");
 			switch (action) {
@@ -147,7 +153,6 @@ public class AdminServlet extends HttpServlet {
 			}
 
 		}
-
 	}
 
 	private void getVehicles(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -549,7 +554,7 @@ public class AdminServlet extends HttpServlet {
 
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		System.out.println("YoPost");
+		perform(req, resp);
 	}
 
 	private void addVehicle(HttpServletRequest request, HttpServletResponse response) {
