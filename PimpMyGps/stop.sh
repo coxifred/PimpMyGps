@@ -1,1 +1,1 @@
-pkill -9 -f "java -jar build/libs/PimpMyGps.jar"
+pkill -9 -f " -jar build/libs/PimpMyGps.jar"

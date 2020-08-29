@@ -22,6 +22,7 @@ repositories {
 }
 
 dependencies {
+    implementation files('plugins/pluginAgent.jar')
     compile group: 'org.eclipse.jetty'          , name: 'jetty-server',                version: "${jettyVersion}"
     compile group: 'org.eclipse.jetty'          , name: 'jetty-webapp',                version: "${jettyVersion}"
     compile group: 'org.eclipse.jetty'          , name: 'jetty-servlet',               version: "${jettyVersion}"
