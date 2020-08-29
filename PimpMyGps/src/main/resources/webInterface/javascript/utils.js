@@ -10,7 +10,12 @@
     
     include("javascript/jquery-ui-1.10.0.custom.js");
     include("javascript/jquery-websocket.js");
+    
+    include("javascript/osm/leaflet-providers.js");
     include("javascript/osm/leaflet.js");
+    
+    //include("https://cdn-webgl.wrld3d.com/wrldjs/dist/latest/wrld.js");
+ 
 
     var popup;
     var ssPopup;

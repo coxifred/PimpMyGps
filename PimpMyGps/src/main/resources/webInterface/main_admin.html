@@ -764,11 +764,35 @@ canvas {
 		
 		function displayMap()
 		{
-			map=new L.Map('map');                       
-			L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+			
+			
+			
+			
+			
+			/*
+			https://github.com/leaflet-extras/leaflet-providers
+			*/
+			
+			                       
+			var osm=L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 	        attribution: '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
 	            maxZoom: 18
-	         }).addTo(map);
+	         });
+			
+			var sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+				attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+				maxZoom: 18
+				});
+			
+			map=new L.Map('map',{layers: [osm]});
+			var baseMaps = {
+						    "Satellite": sat,
+						    "OSM": osm
+						};
+						
+			
+			L.control.layers(null,baseMaps,{position:'topleft'}).addTo(map);
+			
 			map.on("dragend", function (e){
 				followMarkerRadar();
 			});
@@ -1388,7 +1412,7 @@ canvas {
 		style="position: fixed; height: 100%; width: 100%; z-index: 1"></div>
 	<div id=bars
 		style="position: fixed; top: 5px; right: 5px; z-index: 100">
-		<i class="big bars icon"></i>
+		<i class="red big bars icon"></i>
 	</div>
 
 	<div id=menu

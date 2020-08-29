@@ -100,7 +100,7 @@ function initializeRadar() {
 			ctx.beginPath();
 			ctx.arc( beat.x, beat.y, Math.max( (beat.size * beat.strength)-2, 0 ), 0, Math.PI * 2, true );
 			ctx.lineWidth = 36;
-			ctx.globalAlpha = 0.2 * ( 1 - beat.strength );
+			ctx.globalAlpha = 0.7 * ( 1 - beat.strength );
 			ctx.strokeStyle = beat.color;
 			ctx.stroke();
 
