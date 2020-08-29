@@ -5,6 +5,8 @@
     include("javascript/yui_json.js");
     include("javascript/calendar.js");
     include("javascript/dateJs/date.js");
+    include("javascript/sketch.min.js");
+    include("javascript/radar.js");
     
     include("javascript/jquery-ui-1.10.0.custom.js");
     include("javascript/jquery-websocket.js");

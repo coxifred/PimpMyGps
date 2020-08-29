@@ -35,6 +35,19 @@ html, body, #map {
 	width: 100vw;
 }
 
+canvas {
+  position: absolute;
+  z-index:10000;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  outline: none;
+  pointer-events: none;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0); /* mobile webkit */
+}
 
 </style>
 
@@ -48,6 +61,7 @@ html, body, #map {
 		var currentUser;
 		var currentFriend;
 		var currentPlugin;
+		var vehCenterMap;
 		
 		var markers = new Map();
 		var lines = new Map();
@@ -118,6 +132,8 @@ html, body, #map {
 		
 		loadSystem();loadVehicles();loadUsers();loadFriends();loadAvailableFriends();loadSentRequests();loadReceiveRequests();loadPlugins();loadOrphans();
 		displayMap();
+		initializeRadar();
+		
 		$('#sub').dropdown();
 		$('#gpsList').dropdown();
 	
@@ -148,6 +164,15 @@ html, body, #map {
 			$('#pluginList').hide();
 		});
 
+		
+	
+		
+		function updateRadar(x,y)
+		{
+			world.center.x=x;
+			world.center.y=y;
+			console.log(world);
+		}
 		
 		function loadSystem()
 		{
@@ -739,15 +764,39 @@ html, body, #map {
 		
 		function displayMap()
 		{
-			map = new L.Map('map');                       
+			map=new L.Map('map');                       
 			L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 	        attribution: '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
 	            maxZoom: 18
 	         }).addTo(map);
+			map.on("dragend", function (e){
+				followMarkerRadar();
+			});
+			map.on("click", function (e){
+				followMarkerRadar();
+			});
+			map.on("zoomend", function (e){
+				followMarkerRadar();
+			});
+			
+			
 	        map.attributionControl.setPrefix(''); // Don't show the 'Powered by Leaflet' text.
-	        
+	    }
 
-	       
+		function followMarkerRadar()
+		{
+			if ( typeof currentVeh != "undefined" )
+				{
+				                 var latlng = {
+									            lat: currentVeh.gps.latitude,
+												lng: currentVeh.gps.longitude
+											  };
+								 
+        						 var pixelPosition = map.latLngToContainerPoint(latlng);
+								 console.log(pixelPosition);
+								 updateRadar(pixelPosition.x,pixelPosition.y);
+        						 
+				}       
 		}
 		
 		function checkIfVehicleIsPresent(vehicleName)
@@ -924,7 +973,7 @@ html, body, #map {
 			$("#vehicleCount").html("Vehicles<div style=position:relative;top:-1px; class=\"ui mini green left pointing label\">" +jsonVehs.length+ "</div>");
 			$("#vehicleCountMenu").html("My Vehicles<div style=position:relative;top:-1px;right:-32px class=\"ui tiny green left pointing label\">" +jsonVehs.length+ "</div>");
 			
-			var vehCenterMap;
+			
 			for ( i=0;i<jsonVehs.length;i++)
 	 		{
 
@@ -944,6 +993,7 @@ html, body, #map {
 				if ( i == 0)
 					{
  					 vehCenterMap=jsonVehs[i];
+					 currentVeh=vehCenterMap;
 					}
  				   
 					displayVehOnMap(jsonVehs[i],vehCenterMap);
@@ -1159,6 +1209,12 @@ html, body, #map {
 				    	var marker = new L.Marker(markerLocation);
 			    		map.addLayer(marker);
 				    	marker.bindPopup(popupText);
+				        //Quand on clique sur le marker  ça recentre la map
+	                    marker.addEventListener("click", function (e){
+							
+                           map.panTo(this.getLatLng());
+                        });
+                        
 				    	markers.set(jsonVeh.name,marker);
 					}
 		}
@@ -1950,6 +2006,8 @@ html, body, #map {
 		</div>
 	</div>
 
+
+   
 
 </body>
 </html>
