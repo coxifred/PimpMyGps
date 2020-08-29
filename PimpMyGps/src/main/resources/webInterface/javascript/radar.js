@@ -15,7 +15,7 @@ canvas {
 
 var BEAT_VELOCITY = 0.005,
   BEAT_FREQUENCY = 5,
-	BEAT_LIMIT = 2;
+	BEAT_LIMIT = 7;
 
 // The world dimensions
 var world = { 
@@ -87,7 +87,7 @@ function initializeRadar() {
 		}
 
 		// Remove used up beats
-		if( beat.strength > 1 ) {
+		if( beat.strength > 2 ) {
 			beat.deactivate();
 		}
 		
@@ -100,7 +100,7 @@ function initializeRadar() {
 			ctx.beginPath();
 			ctx.arc( beat.x, beat.y, Math.max( (beat.size * beat.strength)-2, 0 ), 0, Math.PI * 2, true );
 			ctx.lineWidth = 36;
-			ctx.globalAlpha = 0.7 * ( 1 - beat.strength );
+			ctx.globalAlpha = 0.7 * ( 2.5 - beat.strength );
 			ctx.strokeStyle = beat.color;
 			ctx.stroke();
 
